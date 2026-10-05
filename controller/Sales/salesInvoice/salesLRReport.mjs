@@ -1914,3 +1914,23 @@ export const getSalesOrderForAssignCostCenterWhatsapp = async (req, res) => {
         servError(e, res);
     }
 };
+
+
+export const getpaidDetils = async (req, res) => {
+    try {
+        const { fromDate, toDate } = req.query;
+        console.log("fromData", req.query)
+        const from = req.query?.fromDate ? ISOString(req.query?.fromDate) : ISOString();
+        const to = req.query?.toDate ? ISOString(req.query?.toDate) : ISOString();
+        const request = new sql.Request()
+            .input('fromDate', sql.Date, from)
+            .input('toDate', sql.Date, to)
+            .execute('Sales_Invoice_Paid_List');
+
+        const result = await request;
+
+        sentData(res, result.recordset);
+    } catch (e) {
+        servError(e, res);
+    }
+}

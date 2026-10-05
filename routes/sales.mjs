@@ -12,9 +12,11 @@ import {
     getFilterValues, getStockInHandGodownWise, getSalesExpenceAccount,
     getGodownStockDetails
 } from '../controller/Sales/salesInvoice/invoiceDependency.mjs';
-import { getSalesInvoiceForAssignCostCenter, invoiceCopyPrintOut, katchathCopyPrintOut, multipleSalesInvoiceStaffUpdate, postAssignCostCenterToSalesInvoice,deliverySlipPrintOut, salesInvoicePaper, multipleSalesInvoiceStaffDelete, PendingSalesInvoice,getSalesInvoiceForAssignCostCenterWhatsapp,
-lrReportUploadgetMobile,lrReportUploadMobile,lrReportUpdateMobile,getSalesOrderForAssignCostCenterWhatsapp
- } from '../controller/Sales/salesInvoice/salesLRReport.mjs';
+import {
+    getSalesInvoiceForAssignCostCenter, invoiceCopyPrintOut, katchathCopyPrintOut, multipleSalesInvoiceStaffUpdate, postAssignCostCenterToSalesInvoice, deliverySlipPrintOut, salesInvoicePaper, multipleSalesInvoiceStaffDelete, PendingSalesInvoice, getSalesInvoiceForAssignCostCenterWhatsapp,
+    lrReportUploadgetMobile, lrReportUploadMobile, lrReportUpdateMobile, getSalesOrderForAssignCostCenterWhatsapp,
+    getpaidDetils
+} from '../controller/Sales/salesInvoice/salesLRReport.mjs';
 import salesInvoice from '../controller/Sales/salesInvoice.mjs';
 import salesReports from '../controller/Sales/reports.mjs';
 import salesRetrunEntry from '../controller/Sales/salesReturn/salesRetrunEntry.mjs';
@@ -61,7 +63,7 @@ SalesRouter.delete(
         rowIdField: 'Do_Id',
         userField: 'Altered_by',
         reason: 'Alter_Reason',
-    }), 
+    }),
     cancelSalesInvoice
 );
 SalesRouter.put(
@@ -71,12 +73,12 @@ SalesRouter.put(
         rowIdField: 'Do_Id',
         userField: 'Altered_by',
         reason: 'Alter_Reason',
-    }), 
+    }),
     revokeSalesInvoice
 );
 SalesRouter.put(
-    '/salesInvoice', 
-        alterHistory({
+    '/salesInvoice',
+    alterHistory({
         alteredTable: 'tbl_Sales_Delivery_Gen_Info',
         rowIdField: 'Do_Id',
         userField: 'Altered_by',
@@ -93,9 +95,9 @@ SalesRouter.get('/salesInvoice/bulkByIds', getSalesInvoiceByDoIds);
 SalesRouter.get('/salesInvoice/godownStockDetails', getGodownStockDetails);
 SalesRouter.put('/salesInvoice/stockReadyForDelivery', updateProductDeliveryStatus);
 
-SalesRouter.get('/getInvoiceDetails',salesInvoice.getInvoiceDetails)
+SalesRouter.get('/getInvoiceDetails', salesInvoice.getInvoiceDetails)
 
-SalesRouter.get('/getSalesOrderDetails',salesInvoice.getSalesOrderDetails)
+SalesRouter.get('/getSalesOrderDetails', salesInvoice.getSalesOrderDetails)
 
 SalesRouter.get('/presaleOrder/getList', salesOrder.getPresaleOrder)
 SalesRouter.post('/presaleOrder/saleOrderCreationWithPso', salesOrder.saleOrderCreationWithPso)
@@ -114,12 +116,12 @@ SalesRouter.get('/saleOrderReport', salesOrder.saleOrderReport)
 
 SalesRouter.post('/salesOrderSalesInvoice', salesInvoice.createSalesTransaction)
 SalesRouter.get('/salesInvoice/Details', salesInvoice.getSaleOrderWithDeliveries)
-SalesRouter.get('/invoicesNumber',salesInvoice.getSalesOrderInvoice)
+SalesRouter.get('/invoicesNumber', salesInvoice.getSalesOrderInvoice)
 
 
 
-SalesRouter.post('/generatePdf',salesInvoice.getSalesOrderInvoiceDetailsForPdf)
-SalesRouter.get('/downloadPdf',salesInvoice.downloadGeneratedPdf)
+SalesRouter.post('/generatePdf', salesInvoice.getSalesOrderInvoiceDetailsForPdf)
+SalesRouter.get('/downloadPdf', salesInvoice.downloadGeneratedPdf)
 
 
 // sales LR Report routes
@@ -128,9 +130,12 @@ SalesRouter.post('/salesInvoice/lrReport', postAssignCostCenterToSalesInvoice);
 SalesRouter.post('/salesInvoice/lrReport/multiple', multipleSalesInvoiceStaffUpdate);
 SalesRouter.post('/salesInvoice/lrReport/multipleDelete', multipleSalesInvoiceStaffDelete);
 
-SalesRouter.get('/lrreportUpload',lrReportUploadgetMobile)
-SalesRouter.post('/lrreportUpload',lrReportUploadMobile)
-SalesRouter.put('/lrreportUpload',lrReportUpdateMobile)
+
+SalesRouter.get('/salesInvoice/paidDetails', getpaidDetils)
+
+SalesRouter.get('/lrreportUpload', lrReportUploadgetMobile)
+SalesRouter.post('/lrreportUpload', lrReportUploadMobile)
+SalesRouter.put('/lrreportUpload', lrReportUpdateMobile)
 
 SalesRouter.get('/salesInvoice/lrReportWhatsapp', getSalesInvoiceForAssignCostCenterWhatsapp);
 
@@ -152,7 +157,7 @@ SalesRouter.get('/salesInvoice/printOuts/deliverySlip', deliverySlipPrintOut);
 SalesRouter.get('/lrReport', salesReports.getLRreport)
 SalesRouter.post('/lrReport', salesReports.costCenterUpdate)
 
-SalesRouter.get('/salesOrderPendingDelivery',salesOrder.getSalesOrderPending)
+SalesRouter.get('/salesOrderPendingDelivery', salesOrder.getSalesOrderPending)
 
 // sales Returns
 
@@ -162,10 +167,10 @@ SalesRouter.put('/salesReturn', salesRetrunEntry.updateSalesReturn);
 
 
 
-SalesRouter.post('/salesInvoice/Whatsapp',salesInvoice.salesInvoiceWhatsapp)
-SalesRouter.put('/salesInvoice/Whatsapp',salesInvoice.salesInvoiceWhatsappupdate)
+SalesRouter.post('/salesInvoice/Whatsapp', salesInvoice.salesInvoiceWhatsapp)
+SalesRouter.put('/salesInvoice/Whatsapp', salesInvoice.salesInvoiceWhatsappupdate)
 
-SalesRouter.get('/salesOrder/list',salesOrder.getSaleOrderList)
+SalesRouter.get('/salesOrder/list', salesOrder.getSaleOrderList)
 SalesRouter.get('/salesOrder/lrReportWhatsapp', getSalesOrderForAssignCostCenterWhatsapp);
 
 export default SalesRouter;
