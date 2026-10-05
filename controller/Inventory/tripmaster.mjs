@@ -10,6 +10,12 @@ const tripActivities = () => {
         try {
             const FromDate = req.query?.Fromdate ? ISOString(req.query.Fromdate) : ISOString();
             const ToDate = req.query?.Todate ? ISOString(req.query.Todate) : ISOString();
+            
+            const VoucherType = req.query?.VoucherType || null;
+            const Staffs = req.query?.Staffs || null;
+            const Items = req.query?.Items || null;
+            const FromGodown = req.query?.FromGodown || null;
+            const ToGodown = req.query?.ToGodown || null;
 
             if (!FromDate && !ToDate) {
                 return invalidInput(res, 'Select StartDate & EndDate')
@@ -18,6 +24,11 @@ const tripActivities = () => {
             const request = new sql.Request();
             request.input('FromDate', sql.Date, FromDate);
             request.input('ToDate', sql.Date, ToDate);
+            request.input('VoucherType', sql.NVarChar(sql.MAX), VoucherType);
+            request.input('Staffs', sql.NVarChar(sql.MAX), Staffs);
+            request.input('Items', sql.NVarChar(sql.MAX), Items);
+            request.input('FromGodown', sql.NVarChar(sql.MAX), FromGodown);
+            request.input('ToGodown', sql.NVarChar(sql.MAX), ToGodown);
 
             const result = await request.query(
                 `
@@ -25,15 +36,42 @@ const tripActivities = () => {
                 DECLARE @FilteredTrip TABLE (Trip_Id INT);
                 -- inserting data to temp table
                 INSERT INTO @FilteredTrip (Trip_Id)
-                SELECT Trip_Id
-                FROM tbl_Trip_Master
-                WHERE Trip_Date BETWEEN @FromDate AND @ToDate
-                    AND BillType IN (
+                SELECT tm.Trip_Id
+                FROM tbl_Trip_Master tm
+                LEFT JOIN tbl_Voucher_Type AS v ON v.Vocher_Type_Id = tm.VoucherType
+                WHERE tm.Trip_Date BETWEEN @FromDate AND @ToDate
+                    AND tm.BillType IN (
                         'MATERIAL INWARD',
                         'OTHER GODOWN',
                         'CREDIT_NOTE',
                         'DEBIT_NOTE'
-                    );
+                    )
+                    AND (@VoucherType IS NULL OR v.Voucher_Type IN (SELECT value FROM OPENJSON(@VoucherType)))
+                    AND (@Staffs IS NULL OR tm.Trip_Id IN (
+                        SELECT te.Trip_Id FROM tbl_Trip_Employees te
+                        LEFT JOIN tbl_ERP_Cost_Center e ON e.Cost_Center_Id = te.Involved_Emp_Id
+                        WHERE e.Cost_Center_Name IN (SELECT value FROM OPENJSON(@Staffs))
+                    ))
+                    AND (@Items IS NULL OR tm.Trip_Id IN (
+                        SELECT td.Trip_Id FROM tbl_Trip_Details td
+                        LEFT JOIN tbl_Trip_Arrival ta ON ta.Arr_Id = td.Arrival_Id
+                        LEFT JOIN tbl_Product_Master pm ON pm.Product_Id = ta.Product_Id
+                        WHERE pm.Product_Name IN (SELECT value FROM OPENJSON(@Items))
+                    ))
+                    AND (@FromGodown IS NULL OR tm.Trip_Id IN (
+                        SELECT td.Trip_Id FROM tbl_Trip_Details td
+                        LEFT JOIN tbl_Trip_Arrival ta ON ta.Arr_Id = td.Arrival_Id
+                        LEFT JOIN tbl_Godown_Master gm_from ON gm_from.Godown_Id = ta.From_Location
+                        LEFT JOIN tbl_Godown_Master tm_gm ON tm_gm.Godown_Id = tm.addressGodown
+                        WHERE (CASE WHEN ta.From_Location = 35 THEN COALESCE(tm_gm.Godown_Name, 'Unknown') ELSE COALESCE(gm_from.Godown_Name, 'Unknown') END) IN (SELECT value FROM OPENJSON(@FromGodown))
+                    ))
+                    AND (@ToGodown IS NULL OR tm.Trip_Id IN (
+                        SELECT td.Trip_Id FROM tbl_Trip_Details td
+                        LEFT JOIN tbl_Trip_Arrival ta ON ta.Arr_Id = td.Arrival_Id
+                        LEFT JOIN tbl_Godown_Master gm_to ON gm_to.Godown_Id = ta.To_Location
+                        LEFT JOIN tbl_Godown_Master tm_gm ON tm_gm.Godown_Id = tm.addressGodown
+                        WHERE (CASE WHEN ta.To_Location = 35 THEN COALESCE(tm_gm.Godown_Name, 'Unknown') ELSE COALESCE(gm_to.Godown_Name, 'Unknown') END) IN (SELECT value FROM OPENJSON(@ToGodown))
+                    ));
                 -- 0. main table
                 SELECT
                     tm.*,
@@ -1252,6 +1290,63 @@ const tripActivities = () => {
         }
     }
 
+    const getFilterValues = async (req, res) => {
+        try {
+            const request = new sql.Request();
+            const result = await request.query(`
+                -- Voucher
+                SELECT DISTINCT v.Voucher_Type AS value, v.Voucher_Type AS label
+                FROM tbl_Trip_Master tm
+                JOIN tbl_Voucher_Type v ON v.Vocher_Type_Id = tm.VoucherType
+                WHERE v.Voucher_Type IS NOT NULL;
+                
+                -- Staffs
+                SELECT DISTINCT e.Cost_Center_Name AS value, e.Cost_Center_Name AS label
+                FROM tbl_Trip_Employees te
+                JOIN tbl_ERP_Cost_Center e ON e.Cost_Center_Id = te.Involved_Emp_Id
+                WHERE e.Cost_Center_Name IS NOT NULL;
+                
+                -- Items
+                SELECT DISTINCT pm.Product_Name AS value, pm.Product_Name AS label
+                FROM tbl_Trip_Arrival ta
+                JOIN tbl_Product_Master pm ON pm.Product_Id = ta.Product_Id
+                WHERE pm.Product_Name IS NOT NULL;
+                
+                -- FromGodown
+                SELECT DISTINCT 
+                    (CASE WHEN ta.From_Location = 35 THEN tm_gm.Godown_Name ELSE gm_from.Godown_Name END) AS value,
+                    (CASE WHEN ta.From_Location = 35 THEN tm_gm.Godown_Name ELSE gm_from.Godown_Name END) AS label
+                FROM tbl_Trip_Details td
+                JOIN tbl_Trip_Master tm ON tm.Trip_Id = td.Trip_Id
+                JOIN tbl_Trip_Arrival ta ON ta.Arr_Id = td.Arrival_Id
+                LEFT JOIN tbl_Godown_Master gm_from ON gm_from.Godown_Id = ta.From_Location
+                LEFT JOIN tbl_Godown_Master tm_gm ON tm_gm.Godown_Id = tm.addressGodown
+                WHERE (CASE WHEN ta.From_Location = 35 THEN tm_gm.Godown_Name ELSE gm_from.Godown_Name END) IS NOT NULL;
+                
+                -- ToGodown
+                SELECT DISTINCT 
+                    (CASE WHEN ta.To_Location = 35 THEN tm_gm.Godown_Name ELSE gm_to.Godown_Name END) AS value,
+                    (CASE WHEN ta.To_Location = 35 THEN tm_gm.Godown_Name ELSE gm_to.Godown_Name END) AS label
+                FROM tbl_Trip_Details td
+                JOIN tbl_Trip_Master tm ON tm.Trip_Id = td.Trip_Id
+                JOIN tbl_Trip_Arrival ta ON ta.Arr_Id = td.Arrival_Id
+                LEFT JOIN tbl_Godown_Master gm_to ON gm_to.Godown_Id = ta.To_Location
+                LEFT JOIN tbl_Godown_Master tm_gm ON tm_gm.Godown_Id = tm.addressGodown
+                WHERE (CASE WHEN ta.To_Location = 35 THEN tm_gm.Godown_Name ELSE gm_to.Godown_Name END) IS NOT NULL;
+            `);
+
+            dataFound(res, [], 'data found', {
+                voucherType: toArray(result.recordsets[0]),
+                staffs: toArray(result.recordsets[1]),
+                items: toArray(result.recordsets[2]),
+                fromGodowns: toArray(result.recordsets[3]),
+                toGodowns: toArray(result.recordsets[4]),
+            });
+        } catch (e) {
+            servError(e, res);
+        }
+    };
+
     return {
         getTripDetails,
         createTripDetails,
@@ -1260,7 +1355,8 @@ const tripActivities = () => {
         postAssignCostCenterToTrip,
         multipleTripStaffUpdate,
         multipleTripStaffDelete,
-        cancelTripSheet
+        cancelTripSheet,
+        getFilterValues
     }
 }
 

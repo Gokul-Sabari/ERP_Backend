@@ -207,23 +207,31 @@ const RetailerControll = () => {
             let insertQuery = '';
             const cleanSearchStr = searchStr.replace(/[^a-zA-Z0-9]/g, '');
             
+            const cleanCol = `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(Retailer_Name, ' ', ''), ',', ''), '.', ''), '-', ''), '&', ''), '(', ''), ')', ''), '/', ''), '''', '')`;
+
             if (searchStr && searchStr.length >= 3) {
                 insertQuery = `
-                    INSERT INTO @retailerIds (Retailer_Id)
-                    SELECT Retailer_Id 
+                    INSERT INTO @retailerIds (Retailer_Id, Relevance_Score)
+                    SELECT Retailer_Id,
+                        CASE 
+                            WHEN Retailer_Name LIKE @searchStr + '%' THEN 1
+                            WHEN Retailer_Name LIKE '% ' + @searchStr + '%' THEN 2
+                            WHEN ${cleanCol} LIKE @cleanSearchStr + '%' THEN 3
+                            ELSE 4
+                        END AS Relevance_Score
                     FROM tbl_Retailers_Master
                     WHERE isRetailer = @isRetailer AND isVendor = @isVendor
                     AND (
                         Retailer_Name LIKE '%' + @searchStr + '%'
-                        OR Mobile_No LIKE '%' + @searchStr + '%'
-                        OR Reatailer_City LIKE '%' + @searchStr + '%'
-                        OR REPLACE(REPLACE(REPLACE(REPLACE(Retailer_Name, ' ', ''), ',', ''), '.', ''), '-', '') LIKE '%' + @cleanSearchStr + '%'
+                        -- OR Mobile_No LIKE '%' + @searchStr + '%'
+                        -- OR Reatailer_City LIKE '%' + @searchStr + '%'
+                        OR ${cleanCol} LIKE '%' + @cleanSearchStr + '%'
                     );
                 `;
             } else {
                 insertQuery = `
-                    INSERT INTO @retailerIds (Retailer_Id)
-                    SELECT TOP 100 Retailer_Id 
+                    INSERT INTO @retailerIds (Retailer_Id, Relevance_Score)
+                    SELECT TOP 100 Retailer_Id, 1 AS Relevance_Score
                     FROM tbl_Retailers_Master
                     WHERE isRetailer = @isRetailer AND isVendor = @isVendor
                     ORDER BY Retailer_Name ASC;
@@ -241,13 +249,13 @@ const RetailerControll = () => {
                 insertQuery += `
                     IF @Selected_Retailer_Id > 0 AND NOT EXISTS(SELECT 1 FROM @retailerIds WHERE Retailer_Id = @Selected_Retailer_Id)
                     BEGIN
-                        INSERT INTO @retailerIds (Retailer_Id) VALUES (@Selected_Retailer_Id)
+                        INSERT INTO @retailerIds (Retailer_Id, Relevance_Score) VALUES (@Selected_Retailer_Id, 0)
                     END
                 `;
             }
 
             const result = await request.query(`
-                    DECLARE @retailerIds TABLE (Retailer_Id INT);
+                    DECLARE @retailerIds TABLE (Retailer_Id INT, Relevance_Score INT);
                     ${insertQuery}
                     -- getting retailers
                     SELECT 
@@ -270,11 +278,11 @@ const RetailerControll = () => {
                         COALESCE(lol.GST_No, '') AS lolGstNumber,
                         'TamilNadu' AS lolStateName
                     FROM tbl_Retailers_Master AS r
+                    INNER JOIN @retailerIds AS ids ON ids.Retailer_Id = r.Retailer_Id
                     LEFT JOIN tbl_Account_Master AS a ON a.Acc_Id = r.AC_Id 
                     LEFT JOIN tbl_ERP_POS_Master AS pos ON pos.Retailer_Id = r.Retailer_Id 
                     LEFT JOIN tbl_Ledger_LOL AS lol ON lol.Ret_Id = r.Retailer_Id
-                    WHERE r.Retailer_Id IN (SELECT DISTINCT Retailer_Id FROM @retailerIds)
-                    ORDER BY r.Retailer_Name ASC;
+                    ORDER BY ids.Relevance_Score ASC, r.Retailer_Name ASC;
                     -- COST CATEGORY
                     SELECT 
                         Cost_Category_Id AS costTypeId,

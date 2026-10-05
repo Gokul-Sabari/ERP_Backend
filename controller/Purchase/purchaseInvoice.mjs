@@ -199,23 +199,6 @@ const PurchaseInvoice = () => {
                 toArray(Expence_Array).reduce((acc, exp) => Addition(acc, exp?.Expence_Value), 0)
             ));
 
-            const Total_Invoice_value = RoundNumber(Addition(
-                TotalExpences,
-                Product_Array.reduce((acc, item) => {
-                    const Amount = RoundNumber(item?.Amount);
-
-                    if (isNotTaxableBill) return Addition(acc, Amount);
-
-                    const product = findProductDetails(productsData, item.Item_Id);
-                    const gstPercentage = isEqualNumber(IS_IGST, 1) ? product.Igst_P : product.Gst_P;
-
-                    if (isInclusive) {
-                        return Addition(acc, calculateGSTDetails(Amount, gstPercentage, 'remove').with_tax);
-                    } else {
-                        return Addition(acc, calculateGSTDetails(Amount, gstPercentage, 'add').with_tax);
-                    }
-                }, 0)
-            ));
 
             const totalValueBeforeTax = Product_Array.reduce((acc, item) => {
                 const Amount = RoundNumber(item?.Amount);
@@ -240,6 +223,13 @@ const PurchaseInvoice = () => {
                 TotalTax: 0
             });
 
+            const finalTotalWithoutRoundOff = Addition(
+                totalValueBeforeTax.TotalValue,
+                Addition(totalValueBeforeTax.TotalTax, TotalExpences)
+            );
+            const Actual_Round_off = checkIsNumber(Round_off) ? toNumber(Round_off) : RoundNumber(Math.round(finalTotalWithoutRoundOff) - finalTotalWithoutRoundOff);
+            const Total_Invoice_value = Addition(finalTotalWithoutRoundOff, Actual_Round_off);
+
             await transaction.begin();
 
             const request = new sql.Request(transaction)
@@ -257,11 +247,11 @@ const PurchaseInvoice = () => {
                 .input('SGST_Total', isIGST ? 0 : RoundNumber(totalValueBeforeTax.TotalTax / 2))
                 .input('IGST_Total', isIGST ? RoundNumber(totalValueBeforeTax.TotalTax) : 0)
                 .input('IS_IGST', isIGST ? 1 : 0)
-                .input('Round_off', checkIsNumber(Round_off) ? Round_off : RoundNumber(Math.round(Total_Invoice_value) - Total_Invoice_value))
+                .input('Round_off', Actual_Round_off)
                 .input('Total_Expences', TotalExpences)
                 .input('Total_Before_Tax', RoundNumber(totalValueBeforeTax.TotalValue))
                 .input('Total_Tax', RoundNumber(totalValueBeforeTax.TotalTax))
-                .input('Total_Invoice_value', Math.round(Total_Invoice_value))
+                .input('Total_Invoice_value', Total_Invoice_value)
                 .input('Narration', Narration)
                 .input('Cancel_status', 0)
                 .input('Po_Entry_Date', Po_Entry_Date)
@@ -568,23 +558,6 @@ const PurchaseInvoice = () => {
                 toArray(Expence_Array).reduce((acc, exp) => Addition(acc, exp?.Expence_Value), 0)
             ));
 
-            const Total_Invoice_value = RoundNumber(Addition(
-                TotalExpences,
-                Product_Array.reduce((acc, item) => {
-                    const Amount = RoundNumber(item?.Amount);
-
-                    if (isNotTaxableBill) return Addition(acc, Amount);
-
-                    const product = findProductDetails(productsData, item.Item_Id);
-                    const gstPercentage = isEqualNumber(IS_IGST, 1) ? product.Igst_P : product.Gst_P;
-
-                    if (isInclusive) {
-                        return Addition(acc, calculateGSTDetails(Amount, gstPercentage, 'remove').with_tax);
-                    } else {
-                        return Addition(acc, calculateGSTDetails(Amount, gstPercentage, 'add').with_tax);
-                    }
-                }, 0)
-            ));
 
             const totalValueBeforeTax = Product_Array.reduce((acc, item) => {
                 const Amount = RoundNumber(item?.Amount);
@@ -609,6 +582,13 @@ const PurchaseInvoice = () => {
                 TotalTax: 0
             });
 
+            const finalTotalWithoutRoundOff = Addition(
+                totalValueBeforeTax.TotalValue,
+                Addition(totalValueBeforeTax.TotalTax, TotalExpences)
+            );
+            const Actual_Round_off = checkIsNumber(Round_off) ? toNumber(Round_off) : RoundNumber(Math.round(finalTotalWithoutRoundOff) - finalTotalWithoutRoundOff);
+            const Total_Invoice_value = Addition(finalTotalWithoutRoundOff, Actual_Round_off);
+
             const request = new sql.Request(transaction)
                 .input('PIN_Id', PIN_Id)
                 .input('Po_Inv_Date', Po_Inv_Date)
@@ -625,11 +605,11 @@ const PurchaseInvoice = () => {
                 .input('IGST_Total', isIGST ? RoundNumber(totalValueBeforeTax.TotalTax) : 0)
                 .input('IS_IGST', isIGST ? 1 : 0)
 
-                .input('Round_off', checkIsNumber(Round_off) ? Round_off : RoundNumber(Math.round(Total_Invoice_value) - Total_Invoice_value))
+                .input('Round_off', Actual_Round_off)
                 .input('Total_Expences', TotalExpences)
                 .input('Total_Before_Tax', RoundNumber(totalValueBeforeTax.TotalValue))
                 .input('Total_Tax', RoundNumber(totalValueBeforeTax.TotalTax))
-                .input('Total_Invoice_value', Math.round(Total_Invoice_value))
+                .input('Total_Invoice_value', Total_Invoice_value)
 
                 .input('Narration', Narration)
                 .input('Altered_by', Created_by)

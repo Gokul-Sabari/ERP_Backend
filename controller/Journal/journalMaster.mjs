@@ -28,6 +28,7 @@ const getJournal = async (req, res) => {
                 JOIN tbl_Journal_Entries_Info AS jei ON jei.JournalAutoId = jgi.JournalAutoId
                 WHERE 
                     jgi.JournalDate BETWEEN @Fromdate AND @Todate
+                    ${checkIsNumber(voucher) ? ` AND jgi.VoucherType = @voucher ` : ''}
                     ${checkIsNumber(debit) ? ` AND jei.DrCr = 'Dr' AND jei.Acc_Id = @debit ` : ''}
                     ${checkIsNumber(credit) ? ` AND jei.DrCr = 'Cr' AND jei.Acc_Id = @credit ` : ''}
                     ${checkIsNumber(createdBy) ? ` AND jgi.CreatedBy = @createdBy ` : ''}

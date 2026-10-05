@@ -1913,27 +1913,7 @@ export const updateSalesInvoice = async (req, res) => {
             toArray(Expence_Array).reduce((acc, exp) => Addition(acc, exp?.Expence_Value), 0)
         ));
 
-        const Total_Invoice_value = RoundNumber(
-            Addition(
-                TotalExpences,
-                Product_Array.reduce((acc, item) => {
-                    const itemRate = RoundNumber(item?.Item_Rate);
-                    const billQty = RoundNumber(item?.Bill_Qty);
-                    const Amount = Multiplication(billQty, itemRate);
 
-                    if (isNotTaxableBill) return Addition(acc, Amount);
-
-                    const product = findProductDetails(productsData, item.Item_Id);
-                    const gstPercentage = isEqualNumber(IS_IGST, 1) ? product.Igst_P : product.Gst_P;
-
-                    if (isInclusive) {
-                        return Addition(acc, calculateGSTDetails(Amount, gstPercentage, 'remove').with_tax);
-                    } else {
-                        return Addition(acc, calculateGSTDetails(Amount, gstPercentage, 'add').with_tax);
-                    }
-                }, 0)
-            )
-        );
 
         const totalValueBeforeTax = () => {
             const productTax = Product_Array.reduce((acc, item) => {
@@ -1977,7 +1957,12 @@ export const updateSalesInvoice = async (req, res) => {
         const CGST = isIGST ? 0 : totalValueBeforeTaxValues.TotalTax / 2;
         const SGST = isIGST ? 0 : totalValueBeforeTaxValues.TotalTax / 2;
         const IGST = isIGST ? totalValueBeforeTaxValues.TotalTax : 0;
-        // const Round_off = RoundNumber(Math.round(Total_Invoice_value) - Total_Invoice_value);
+        
+        const finalTotalWithoutRoundOff = Addition(
+            totalValueBeforeTaxValues.TotalValue,
+            Addition(totalValueBeforeTaxValues.TotalTax, TotalExpences)
+        );
+        const Total_Invoice_value = Addition(finalTotalWithoutRoundOff, Round_off);
 
         const { delivery_id_to_post, shiping_id_to_post } = await handleDeliveryAndShippingAddress({
             deliveryAddressDetails,

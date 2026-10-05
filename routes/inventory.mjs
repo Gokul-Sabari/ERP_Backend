@@ -31,6 +31,7 @@ inventoryRouter.get('/stockJournal/tallySync', stockJournals.syncTallyStockJourn
 inventoryRouter.get('/stockJournal/inwardsReport', stockJournals.getDestinationItemsOfInwards);
 
 inventoryRouter.get('/tripSheet', tripmaster.getTripDetails);
+inventoryRouter.get('/tripSheet/filtersValues', tripmaster.getFilterValues);
 inventoryRouter.post('/tripSheet', tripmaster.createTripDetails);
 inventoryRouter.put(
     '/tripSheet', 
